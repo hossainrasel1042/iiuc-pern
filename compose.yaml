@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: prod_postgres
+    restart: always
+    secrets:
+      - PASS
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD_FILE: /run/secrets/PASS
+    volumes:
+      - pg_prod_data:/var/lib/postgresql/data
+    networks:
+      - backend_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  pgadmin:
+    image: dpage/pgadmin4:${PGADMIN_VERSION}
+    container_name: prod_pgadmin
+    restart: always
+    secrets:
+      - PGPASS
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD_FILE: /run/secrets/PGPASS
+      PGADMIN_CONFIG_ENABLE_GRAVATAR: "False" 
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - backend_net
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+secrets:
+  PASS:
+    file: ./secrets/PASS.txt
+  PGPASS:
+    file: ./secrets/PGPASS.txt
+
+networks:
+  backend_net:
+    driver: bridge
+
+volumes:
+  pg_prod_data:
+  pgadmin_data:
